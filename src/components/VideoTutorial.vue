@@ -1,26 +1,45 @@
 <template>
   <!-- capture all click on the video area -->
   <div :class="$style.player">
-
     <!-- add dot to indicate the next action -->
-    <div v-if="dot" :class="$style.dot" :style="dot"
-      @click="handleDotClick"></div>
+    <dot v-if="dot" :style="dot" @click="handleDotClick"></dot>
 
     <!-- include the video source -->
     <div @click.capture.prevent="handleVideoClick">
-      <video ref="video" src="/test-movie.mp4" width="1200px" height="800px"
-        :class="$style.video"/>
+      <video
+        ref="video"
+        :src="src"
+        :width="width"
+        :height="height"
+        :class="$style.video"
+      />
     </div>
-
   </div>
 </template>
 
 <script lang="ts">
 import Vue from 'vue'
+import Dot from './VideoDot.vue'
 
 export default Vue.extend({
   name: 'VueVideoPlayer',
-  data () {
+  components: { Dot },
+  props: {
+    src: {
+      type: String,
+      required: true
+    },
+    width: {
+      type: String,
+      required: true
+    },
+    height: {
+      type: String,
+      required: false,
+      default: null
+    }
+  },
+  data() {
     return {
       // timeline information
       timeline: {
@@ -28,37 +47,41 @@ export default Vue.extend({
         next: 0 as number // next trigger
       },
       // triggers
-      triggers: [{
-        position: {
-          x: 552,
-          y: 332
+      triggers: [
+        {
+          position: {
+            x: 552,
+            y: 332
+          },
+          timeline: 0
         },
-        timeline: 0
-      }, {
-        position: {
-          x: 200,
-          y: 200
+        {
+          position: {
+            x: 200,
+            y: 200
+          },
+          timeline: 3
         },
-        timeline: 3
-      }, {
-        position: {
-          x: 150,
-          y: 150
-        },
-        timeline: 5
-      }]
+        {
+          position: {
+            x: 150,
+            y: 150
+          },
+          timeline: 5
+        }
+      ]
     }
   },
   computed: {
     // style properties of the current dot
-    dot (): object | null {
+    dot(): object | null {
       // no dot should currently be shown
       if (this.timeline.current === null) {
         return null
       }
 
       // find the current trigger in the list
-      let currentTrigger = this.triggers.find((trigger) => {
+      let currentTrigger = this.triggers.find(trigger => {
         return trigger.timeline === this.timeline.current
       })
 
@@ -74,13 +97,10 @@ export default Vue.extend({
     }
   },
   methods: {
-
-    handleVideoClick () {
-
-    },
+    handleVideoClick() {},
 
     // handle clicks on the main area
-    handleDotClick () {
+    handleDotClick() {
       // get a reference to the video element
       let video = this.$refs.video as HTMLVideoElement
 
@@ -90,7 +110,7 @@ export default Vue.extend({
       }
 
       // fetch the current trigger
-      let index = this.triggers.findIndex((trigger) => {
+      let index = this.triggers.findIndex(trigger => {
         return trigger.timeline === this.timeline.current
       })
 
@@ -132,46 +152,12 @@ export default Vue.extend({
 </script>
 
 <style lang="stylus" module>
+.player {
+  position: relative;
+  box-sizing: border-box;
 
-  .player {
-    position: relative;
+  *, *:before, *:after {
+    box-sizing: inherit;
   }
-
-  $dotSize = 40px;
-
-  .dot {
-    cursor: pointer;
-    position: absolute;
-    width: $dotSize;
-    height: $dotSize;
-    z-index: 1000;
-    background: transparent;
-
-    &:before, &:after {
-      content: '';
-      display: block;
-      position: absolute;
-      border-radius: $dotSize;
-    }
-
-    &:before {
-      background: rgb(255, 71, 133);
-      height: 37.5%;
-      width: 37.5%;
-      left: 0px;
-      top: 0px;
-      transform: translate3d(-50%, -50%, 0px);
-    }
-
-    &:after {
-      opacity: 0.2;
-      background: rgb(255, 71, 133);
-      width: 100%;
-      height: 100%;
-      left: 0px;
-      top: 0px;
-      transform: translate3d(-50%, -50%, 0px);
-    }
-  }
-
+}
 </style>

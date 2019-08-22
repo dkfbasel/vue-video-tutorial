@@ -1,7 +1,6 @@
-import Vue from 'vue';
-
-import VideoTutorial from '../src/components/VideoTutorial.vue';
+import Vue from 'vue'
+import App from './App.vue'
 
 new Vue({
-	render: h => h(VideoTutorial)
-}).$mount('#app');
+  render: h => h(App)
+}).$mount('#app')
