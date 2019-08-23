@@ -21,7 +21,15 @@ import posed from 'vue-pose'
 
 let Box = posed.div({
   hoverable: true,
-  init: { scale: 1 },
+  init: {
+    scale: 1,
+    x: (props: { left: any }) => {
+      return props.left
+    },
+    y: (props: { top: any }) => {
+      return props.top
+    }
+  },
   hover: { scale: 1.2 }
 })
 

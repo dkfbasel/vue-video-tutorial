@@ -1,8 +1,9 @@
 <template>
   <!-- capture all click on the video area -->
   <div :class="$style.player">
-    <!-- add dot to indicate the next action -->
+    <!-- step information -->
     <template v-if="step">
+      <!-- dot to indicate next action -->
       <dot
         :top="position.dot.top"
         :left="position.dot.left"
@@ -13,11 +14,16 @@
         @drag-end="handleDragEnd"
       ></dot>
 
-      <!-- display information for the current step, if not dragging in dev mode -->
-      <info v-if="dev.dragging === false" :top="position.info.top" :left="position.info.left" :color="color">
-        <slot name="step"></slot>
+      <!-- information for the current step -->
+      <info v-if="dragging === false"
+        :top="position.info.top" :left="position.info.left"
+        :color="color"
+        :content="position.component">
       </info>
     </template>
+
+    <controls :duration="timeline.duration" :current-time="timeline.currentTime"
+      :color="color" />
 
     <!-- include the video -->
     <div @click.capture.prevent="handleVideoClick">
@@ -31,6 +37,7 @@ import Vue from 'vue'
 import Dot from './VideoDot.vue'
 import Info from './VideoInfo.vue'
 import Step from './Step.vue'
+import Controls from './Controls.vue'
 
 import posed from 'vue-pose'
 
@@ -43,7 +50,7 @@ interface Step {
 
 interface StepProps {
   timepoint: number | string
-  top: number | string
+  top: number | string;
   left: number | string
   component: any
 }
@@ -57,6 +64,7 @@ interface Position {
     top: string | number
     left: string | number
   }
+  component: any;
 }
 
 // adapt the timepoint to a specific resolution
@@ -66,7 +74,7 @@ let adaptTimepoint = function adaptTimepoint(timepoint:number) {
 
 export default Vue.extend({
   name: 'VueVideoPlayer',
-  components: { Dot, Info },
+  components: { Controls, Dot, Info },
   props: {
     /** source path of the video */
     src: {
@@ -108,14 +116,14 @@ export default Vue.extend({
         // direction of the playback
         direction: 'forward'
       },
-      // current step
-      step: null as Step | null,
       // steps to be displayed for the tutorial
       steps: [] as Step[],
-      // develop mode information
-      dev: {
-        dragging: false
-      }
+      // steps to ignore
+      ignore: null as number | null,
+      // [DEVMODE] currently selected step
+      selected: null as Step | null,
+      // [DEVMODE] is the user dragging a dot
+      dragging: false
     }
   },
   computed: {
@@ -123,19 +131,53 @@ export default Vue.extend({
       // get a reference to the video element
       return this.$refs.video as HTMLVideoElement
     },
-    // sort the steps by timepoint
-    sortedSteps():Step[] {
-      let sorted:Step[] = []
-
-      for (let i = 0; i < this.steps.length; i++) {
-        sorted.push(this.steps[i])
+    step(): Step | null {
+      // [DEVMODE] always display the selected element
+      if (this.selected) {
+        return this.selected
       }
 
-      sorted.sort((step1, step2) => {
-        return step1.timepoint - step2.timepoint
-      })
+      // find the current step in relation to the timeline position
+      let startTimepoint = 0
+      let endTimepoint = 0
 
-      return sorted
+      // note: we need a time range, since the timeline tracking is not exact
+      // the resolution is different if we are in devMode or regular mode
+      switch (this.timeline.direction) {
+      case 'forward':
+        if (this.devMode) {
+          startTimepoint = this.timeline.currentTime - 0.03
+          endTimepoint = startTimepoint + 0.08
+        } else {
+          startTimepoint = this.timeline.currentTime
+          endTimepoint = startTimepoint + 0.05
+        }
+        break
+
+      case 'backward':
+        if (this.devMode) {
+          endTimepoint = this.timeline.currentTime + 0.03
+          startTimepoint = endTimepoint - 0.08
+        } else {
+          endTimepoint = this.timeline.currentTime
+          startTimepoint = endTimepoint - 0.05
+        }
+        break
+      }
+
+      let step = null as Step | null
+      for (let i = 0; i < this.steps.length; i++) {
+        let stepTimepoint = this.steps[i].timepoint
+        if (stepTimepoint === this.ignore) {
+          continue
+        }
+        if (stepTimepoint >= startTimepoint && stepTimepoint <= endTimepoint) {
+          step = this.steps[i]
+          break
+        }
+      }
+
+      return step
     },
     position(): Position {
       if (!this.step) {
@@ -147,7 +189,8 @@ export default Vue.extend({
           info: {
             top: '0px',
             left: '0px'
-          }
+          },
+          component: null
         }
       }
 
@@ -159,11 +202,17 @@ export default Vue.extend({
         info: {
           top: this.step.top + 'px',
           left: this.step.left + 40 + 'px'
-        }
+        },
+        component: this.step.component
       }
     }
   },
   mounted() {
+    // register the duration of the video, once the information is available
+    this.video.onloadedmetadata = () => {
+      this.timeline.duration = this.video.duration
+    }
+
     // emit event if video is paused
     this.video.onpause = () => {
       this.$emit('video:pause', this.video)
@@ -195,7 +244,8 @@ export default Vue.extend({
     }
 
     // iterate through all steps in the slot and extract the component props
-    for (let node of this.$slots.default) {
+    for (let i = 0; i < this.$slots.default.length; i++) {
+      let node = this.$slots.default[i]
       if (node.componentOptions && node.componentOptions.propsData) {
         let nodeProps = node.componentOptions.propsData as StepProps
         let step: Step = {
@@ -204,12 +254,9 @@ export default Vue.extend({
           timepoint: parseInt(nodeProps.timepoint as string, 10),
           component: node
         }
-
         this.steps.push(step)
       }
     }
-
-    this.$slots.step = [this.steps[0].component]
 
     // setup dev mode controls
     if (!this.devMode) {
@@ -243,33 +290,7 @@ export default Vue.extend({
         return
       }
 
-      // find the current step in relation to the timeline position
-      let startTimepoint = 0
-      let endTimepoint = 0
-
-      switch (this.timeline.direction) {
-      case 'forward':
-        startTimepoint = videoTime
-        endTimepoint = startTimepoint + 0.05
-        break
-
-      case 'backward':
-        endTimepoint = videoTime
-        startTimepoint = endTimepoint - 0.05
-        break
-      }
-
-      let step = null as Step | null
-      for (let i = 0; i < this.steps.length; i++) {
-        let stepTimepoint = this.steps[i].timepoint
-        if (stepTimepoint >= startTimepoint && stepTimepoint <= endTimepoint) {
-          step = this.steps[i]
-          break
-        }
-      }
-
-      this.step = step
-      if (step) {
+      if (this.step && this.step !== this.selected) {
         this.video.pause()
         return
       }
@@ -282,12 +303,7 @@ export default Vue.extend({
     // toggle the play/pause status of the video
     toggleVideo() {
       if (this.video.paused) {
-        if (this.step !== null) {
-          this.triggerStep()
-          return
-        }
-
-        this.video.play()
+        this.triggerStep()
         return
       }
 
@@ -305,31 +321,38 @@ export default Vue.extend({
       // get a reference to the video element
       this.video.pause()
 
-      let timepoint = adaptTimepoint(this.timeline.currentTime)
+      let videoPos = this.video.getBoundingClientRect()
+
+      let top = event.clientY - videoPos.top
+      let left = event.clientX - videoPos.left
+
+      let timepoint = this.timeline.currentTime
 
       // add a new step
       let step: Step = {
         timepoint: timepoint,
-        top: 100,
-        left: 100,
-        component: new Step({
-          propsData: {
-            top: 100,
-            left: 100,
-            timepoint: timepoint
-          }
-        })
+        top: top,
+        left: left,
+        component: null
       }
 
       this.steps.push(step)
     },
 
     triggerStep() {
+      if (this.step) {
+        this.ignore = this.step.timepoint
+      }
       this.video.play()
     },
 
     // handle clicks on the main area
     handleDotClick() {
+      if (this.step) {
+        this.ignore = this.step.timepoint
+      }
+      this.dragging = false
+      this.selected = null
       this.triggerStep()
     },
 
@@ -342,23 +365,22 @@ export default Vue.extend({
         this.toggleVideo()
       }
 
-      // get a reference to the video element
-      let video = this.$refs.video as HTMLVideoElement
-
       if (event.key === 'ArrowLeft' || event.keyCode === 37) {
-        if (video.currentTime > 0.05) {
-          video.currentTime = video.currentTime - 0.05
+        if (this.video.currentTime > 0.05) {
+          this.video.currentTime = this.video.currentTime - 0.05
         } else {
-          video.currentTime = 0.00
+          this.video.currentTime = 0.00
         }
+        this.timeline.currentTime = this.video.currentTime
       }
 
       if (event.key === 'ArrowRight' || event.keyCode === 39) {
-        if (video.currentTime < video.duration - 0.05) {
-          video.currentTime = video.currentTime + 0.05
+        if (this.video.currentTime < this.video.duration - 0.05) {
+          this.video.currentTime = this.video.currentTime + 0.05
         } else {
-          video.currentTime = video.duration
+          this.video.currentTime = this.video.duration
         }
+        this.timeline.currentTime = this.video.currentTime
       }
 
       if (event.key === 'Backspace' || event.key === 'Delete' ||
@@ -378,7 +400,8 @@ export default Vue.extend({
 
     // [DEVMODE] handle start of dragging of the dot
     handleDragStart(event: MouseEvent) {
-      this.dev.dragging = true
+      this.selected = this.step
+      this.dragging = true
     },
 
     // [DEVMODE] handle end of dragging
@@ -386,16 +409,17 @@ export default Vue.extend({
       // pause the video if its running
       this.video.pause()
 
-      if (!this.step) {
-        this.dev.dragging = false
+      if (!this.selected) {
+        this.dragging = false
         return
       }
 
-      this.step.top += delta.y
-      this.step.left += delta.x
-      this.step.timepoint = adaptTimepoint(this.timeline.currentTime)
+      this.selected.top += delta.y
+      this.selected.left += delta.x
+      this.selected.timepoint = this.timeline.currentTime
 
-      this.dev.dragging = false
+      this.dragging = false
+      this.selected = null
     }
   }
 })

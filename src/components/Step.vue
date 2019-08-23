@@ -18,17 +18,17 @@ export default Vue.extend({
   props: {
     top: {
       type: [String, Number],
-      required: false,
+      required: true,
       validator: propValidator
     },
     left: {
       type: [String, Number],
-      required: false,
+      required: true,
       validator: propValidator
     },
     timepoint: {
       type: [String, Number],
-      required: false,
+      required: true,
       validator: propValidator
     }
   }
