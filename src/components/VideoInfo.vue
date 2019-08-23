@@ -50,7 +50,6 @@ export default Vue.extend({
     font-size: 18px;
     color: #fff;
     width: 320px;
-    height: 200px;
     border-radius: 2px;
     transform: translate3d(0%, -50%, 0);
     line-height: 1.3em;
