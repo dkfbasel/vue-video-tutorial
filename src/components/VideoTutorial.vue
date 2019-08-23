@@ -372,6 +372,7 @@ export default Vue.extend({
       }
 
       if (event.key === 'ArrowLeft' || event.keyCode === 37) {
+        // TODO: test seeking by using playback speed and keydown, keyup
         let timeshift = 0.05
         if (event.shiftKey) {
           timeshift = 1.0
@@ -381,6 +382,7 @@ export default Vue.extend({
       }
 
       if (event.key === 'ArrowRight' || event.keyCode === 39) {
+        // TODO: test seeking by using playback speed and keydown, keyup
         let timeshift = 0.05
         if (event.shiftKey) {
           timeshift = 1.0
