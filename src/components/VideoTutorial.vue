@@ -1,6 +1,6 @@
 <template>
   <!-- capture all click on the video area -->
-  <div :class="$style.player">
+  <div :class="$style.player" class="vue-video-tutorial">
     <!-- step information -->
     <template v-if="step">
       <!-- dot to indicate next action -->
@@ -23,7 +23,7 @@
     </template>
 
     <controls :duration="timeline.duration" :current-time="timeline.currentTime"
-      :color="color" />
+      :color="color" class="vue-video-tutorial__controls" />
 
     <!-- include the video -->
     <div @click.capture.prevent="handleVideoClick">

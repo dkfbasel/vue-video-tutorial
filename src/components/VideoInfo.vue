@@ -13,10 +13,6 @@ export default Vue.extend({
       type: String,
       required: true
     },
-    color: {
-      type: String,
-      required: true
-    },
     content: {
       required: false
     }
@@ -31,12 +27,16 @@ export default Vue.extend({
       })
     }
 
+    let style = {
+      top: this.top,
+      left: this.left
+    }
+
     return h('div', {
-      class: this.$style.info,
+      class: [this.$style.info, 'vue-video-tutorial__info'],
       style: {
         top: this.top,
-        left: this.left,
-        background: this.color
+        left: this.left
       }
     }, [content])
   }
@@ -46,10 +46,13 @@ export default Vue.extend({
 <style lang="stylus" module>
   .info {
     position: absolute;
-    padding: 16px;
-    font-size: 18px;
+    padding: 20px 24px;
+    font-family: sans-serif;
+    font-size: 16px;
     color: #fff;
-    width: 320px;
+    background: #161423;
+    box-shadow: 0px 0px 10px #fff;
+    max-width: 320px;
     border-radius: 2px;
     transform: translate3d(0%, -50%, 0);
     line-height: 1.3em;
