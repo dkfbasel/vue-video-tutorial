@@ -360,26 +360,32 @@ export default Vue.extend({
     // NOTE: this might lead to conflicts with multiple video-tutorial-instances
     // on the same page.
     handleKeyboardEvents(event: KeyboardEvent) {
+      // no action if the video reference cannot be found
+      // note: this is mainly a problem with live-reloading
+      if (!this.video) {
+        return
+      }
+
       // spacebar toggles the video
       if (event.key === ' ' || event.keyCode === 32) {
         this.toggleVideo()
       }
 
       if (event.key === 'ArrowLeft' || event.keyCode === 37) {
-        if (this.video.currentTime > 0.05) {
-          this.video.currentTime = this.video.currentTime - 0.05
-        } else {
-          this.video.currentTime = 0.00
+        let timeshift = 0.05
+        if (event.shiftKey) {
+          timeshift = 1.0
         }
+        this.video.currentTime -= timeshift
         this.timeline.currentTime = this.video.currentTime
       }
 
       if (event.key === 'ArrowRight' || event.keyCode === 39) {
-        if (this.video.currentTime < this.video.duration - 0.05) {
-          this.video.currentTime = this.video.currentTime + 0.05
-        } else {
-          this.video.currentTime = this.video.duration
+        let timeshift = 0.05
+        if (event.shiftKey) {
+          timeshift = 1.0
         }
+        this.video.currentTime += timeshift
         this.timeline.currentTime = this.video.currentTime
       }
 
